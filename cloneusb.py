@@ -11,11 +11,11 @@
 # ToDo list:
 # [ ] Automatic format of correct usb drive
 # [ ] Automatic copying of files from folder
-# [ ] WebUI (flask server?) for status and control
+# [ ] GUI (flask server? Qt?) for status and control
 # [ ] Options in WebUI for ex. format drive, new files to copy mode.
 
 
-import subprocess
+from subprocess import run, Popen, STDOUT, PIPE
 import json
 from pprint import pprint
 
@@ -27,7 +27,7 @@ lsblkCMD = [
 # MAY NOT WORK - UNTESTED
 # Format drive to GPT one partition
 formatDriveCMD = [
-    "echo",  "'start=2048, type=7'", "|", "sudo", "sfdisk", "/dev/sdb"
+    "echo",  "'start=2048, type=7'", "|", "sudo", "sfdisk", "#path"
 ]
 
 # MAY NOT WORK - UNTESTED
@@ -67,9 +67,22 @@ def getUsbDevices():
     return usbDevices
 
 
-pprint(getUsbDevices())
-
-
 def formatUSBDevice(path: str):
+    # Replace "#path" with correct drive path
+    pathIndex = formatDriveCMD.index("#path")
+    formatDriveCMD[pathIndex] = path
+
+    # Create one partition
+    formatDriveOutput = run(formatDriveCMD, stdout=PIPE)
+    formatDriveOutput = Popen(formatDriveCMD, stderr=STDOUT, stdout=PIPE)
+    cmdReturn = formatDriveOutput.communicate(
+    )[0], formatDriveOutput.returncode
+
+    print(cmdReturn)
 
     pass
+
+
+formatUSBDevice("test")
+
+# pprint(getUsbDevices())
