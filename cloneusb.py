@@ -24,6 +24,11 @@ lsblkCMD = [
     "lsblk", "-p", "-J", "-o", "NAME,UUID,LABEL,FSTYPE,RM,TRAN"
 ]
 
+# Clean drive with dd
+cleanDriveCMD = [
+    "dd", "if=/dev/zero", "of=#path", "bs=512", "count=1"
+]
+
 # MAY NOT WORK - UNTESTED
 # Format drive to GPT one partition
 formatDriveCMD = [
@@ -33,12 +38,12 @@ formatDriveCMD = [
 # MAY NOT WORK - UNTESTED
 # Format to exFat, set custom label later
 formatPartCMD = [
-    "sudo", "mkfs.exfat", "-f", "-L", "UDISK1", "/dev/sdb1"
+    "sudo", "mkfs.exfat", "-n", "UDISK1", "#path"
 ]
 
 
 def getUsbDevices():
-    rawDeviceData = subprocess.run(lsblkCMD, stdout=subprocess.PIPE)
+    rawDeviceData = run(lsblkCMD, stdout=PIPE)
     devices = json.loads(rawDeviceData.stdout)
     usbDevices = []
     # pprint(devices)
@@ -68,21 +73,47 @@ def getUsbDevices():
 
 
 def formatUSBDevice(path: str):
-    # Replace "#path" with correct drive path
+    # Replace "#path" with correct drive path for cleanDriveCMD
+    pathIndex = 0
+    # Iterate through "cleanDriveCMD" and find "#path"
+    for i in range(len(cleanDriveCMD)):
+        item = cleanDriveCMD[i]
+        if "#path" in item:
+            pathIndex = i
+
+    cleanDriveCMD[pathIndex] = cleanDriveCMD[pathIndex].replace("#path", path)
+
+    # Replace "#path" with correct drive path for formatDriveCMD
     pathIndex = formatDriveCMD.index("#path")
-    formatDriveCMD[pathIndex] = path
+    formatDriveCMD[pathIndex] = formatDriveCMD[pathIndex].replace(
+        "#path", path + "1")
+
+    # Replace "#path" with correct drive path for formatPartCMD
+    pathIndex = formatPartCMD.index("#path")
+    formatPartCMD[pathIndex] = formatPartCMD[pathIndex].replace(
+        "#path", path)
+
+    # Clean the drive
+    cleanDriveOutput = run(cleanDriveCMD, stdout=PIPE)
+
+    # Format drive to GPT
+    formatDriveOutput = run(formatDriveCMD, stdout=PIPE)
 
     # Create one partition
-    formatDriveOutput = run(formatDriveCMD, stdout=PIPE)
-    formatDriveOutput = Popen(formatDriveCMD, stderr=STDOUT, stdout=PIPE)
-    cmdReturn = formatDriveOutput.communicate(
-    )[0], formatDriveOutput.returncode
+    formatPartOutput = run(formatPartCMD, stdout=PIPE)
 
-    print(cmdReturn)
+    # formatDriveOutput = Popen(formatDriveCMD, stderr=STDOUT, stdout=PIPE)
+    # cmdReturn = formatDriveOutput.communicate()[0], formatDriveOutput.returncode
+    # cmdReturn = formatDriveOutput.communicate()
+
+    # print(cmdReturn)
+    print(cleanDriveOutput)
+    print(formatDriveOutput)
+    print(formatPartOutput)
 
     pass
 
 
-formatUSBDevice("test")
+formatUSBDevice("/dev/sdb")
 
 # pprint(getUsbDevices())
