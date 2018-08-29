@@ -103,7 +103,8 @@ def formatUSBDevice(path: str):
     formatPartOutput = run(formatPartCMD, stdout=PIPE)
 
     # formatDriveOutput = Popen(formatDriveCMD, stderr=STDOUT, stdout=PIPE)
-    # cmdReturn = formatDriveOutput.communicate()[0], formatDriveOutput.returncode
+    # cmdReturn = formatDriveOutput.communicate()[0],
+    #   formatDriveOutput.returncode
     # cmdReturn = formatDriveOutput.communicate()
 
     # print(cmdReturn)
