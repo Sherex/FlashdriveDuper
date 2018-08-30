@@ -31,7 +31,7 @@ cleanDriveCMD = [
 
 # MAY NOT WORK - UNTESTED
 # Format drive to GPT one partition
-formatDriveCMD = [
+createPartCMD = [
     "echo",  "'start=2048, type=7'", "|", "sudo", "sfdisk", "#path"
 ]
 
@@ -51,15 +51,20 @@ def getUsbDevices():
     # for device in devices['blockdevices']:
     for i in range(0, len(devices['blockdevices'])):
         device = devices['blockdevices'][i]
+        # If device is not a removable or not usb
         if device['rm'] == '0' or device['tran'] != 'usb':
             continue
+
         parts = {}
-        for part in device['children']:
-            parts[part['name']] = {
-                'uuid': part['uuid'],
-                'label': part['label'],
-                'fstype': part['fstype']
-            }
+
+        # If device has no partitions
+        if "children" in device:
+            for part in device['children']:
+                parts[part['name']] = {
+                    'uuid': part['uuid'],
+                    'label': part['label'],
+                    'fstype': part['fstype']
+                }
 
         usbDevices.append({
             device['name']: {
@@ -83,38 +88,48 @@ def formatUSBDevice(path: str):
 
     cleanDriveCMD[pathIndex] = cleanDriveCMD[pathIndex].replace("#path", path)
 
-    # Replace "#path" with correct drive path for formatDriveCMD
-    pathIndex = formatDriveCMD.index("#path")
-    formatDriveCMD[pathIndex] = formatDriveCMD[pathIndex].replace(
-        "#path", path + "1")
+    # Replace "#path" with correct drive path for createPartCMD
+    pathIndex = createPartCMD.index("#path")
+    createPartCMD[pathIndex] = createPartCMD[pathIndex].replace(
+        "#path", path)
 
     # Replace "#path" with correct drive path for formatPartCMD
     pathIndex = formatPartCMD.index("#path")
     formatPartCMD[pathIndex] = formatPartCMD[pathIndex].replace(
-        "#path", path)
+        "#path", path + "1")
 
     # Clean the drive
     cleanDriveOutput = run(cleanDriveCMD, stdout=PIPE)
 
     # Format drive to GPT
-    formatDriveOutput = run(formatDriveCMD, stdout=PIPE)
+    createPartOutput = run(createPartCMD, stdout=PIPE)
 
     # Create one partition
     formatPartOutput = run(formatPartCMD, stdout=PIPE)
 
-    # formatDriveOutput = Popen(formatDriveCMD, stderr=STDOUT, stdout=PIPE)
-    # cmdReturn = formatDriveOutput.communicate()[0],
-    #   formatDriveOutput.returncode
-    # cmdReturn = formatDriveOutput.communicate()
+    # createPartOutput = Popen(createPartCMD, stderr=STDOUT, stdout=PIPE)
+    # cmdReturn = createPartOutput.communicate()[0],
+    #   createPartOutput.returncode
+    # cmdReturn = createPartOutput.communicate()
 
     # print(cmdReturn)
+
+    formatStatus = {
+        "command": ", ".join(cleanDriveCMD),
+        "returnCode": ""
+    }
     print(cleanDriveOutput)
-    print(formatDriveOutput)
+    print(createPartOutput)
     print(formatPartOutput)
+    print("-" * 50)
+    # Figure out this tuple thingy, called something else
+    print(cleanDriveOutput["args"])
+    for output in cleanDriveOutput[0]:
+        print(output)
 
-    pass
+    return formatStatus
 
 
-formatUSBDevice("/dev/sdb")
+pprint(formatUSBDevice("/dev/sdb"))
 
-# pprint(getUsbDevices())
+pprint(getUsbDevices())
