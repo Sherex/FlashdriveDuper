@@ -32,13 +32,18 @@ cleanDriveCMD = [
 # MAY NOT WORK - UNTESTED
 # Format drive to GPT one partition
 createPartCMD = [
-    "echo",  "'start=2048, type=7'", "|", "sudo", "sfdisk", "#path"
+    [
+        "echo",  "start=2048, type=7"
+    ],
+    [
+        "sudo", "sfdisk", "#path"
+    ]
 ]
 
 # MAY NOT WORK - UNTESTED
 # Format to exFat, set custom label later
 formatPartCMD = [
-    "sudo", "mkfs.exfat", "-n", "UDISK1", "#path"
+    "mkfs.exfat", "-n", "UDISK1", "#path"
 ]
 
 
@@ -89,8 +94,8 @@ def formatUSBDevice(path: str):
     cleanDriveCMD[pathIndex] = cleanDriveCMD[pathIndex].replace("#path", path)
 
     # Replace "#path" with correct drive path for createPartCMD
-    pathIndex = createPartCMD.index("#path")
-    createPartCMD[pathIndex] = createPartCMD[pathIndex].replace(
+    pathIndex = createPartCMD[1].index("#path")
+    createPartCMD[1][pathIndex] = createPartCMD[1][pathIndex].replace(
         "#path", path)
 
     # Replace "#path" with correct drive path for formatPartCMD
@@ -102,30 +107,35 @@ def formatUSBDevice(path: str):
     cleanDriveOutput = run(cleanDriveCMD, stdout=PIPE)
 
     # Format drive to GPT
-    createPartOutput = run(createPartCMD, stdout=PIPE)
+    createPartOutput = run(createPartCMD[0], stdout=PIPE)
+    createPartOutput = run(
+        createPartCMD[1], input=createPartOutput.stdout, stdout=PIPE)
 
     # Create one partition
     formatPartOutput = run(formatPartCMD, stdout=PIPE)
 
+    # TESTING with popen.
     # createPartOutput = Popen(createPartCMD, stderr=STDOUT, stdout=PIPE)
     # cmdReturn = createPartOutput.communicate()[0],
     #   createPartOutput.returncode
     # cmdReturn = createPartOutput.communicate()
-
     # print(cmdReturn)
+    # TESTING END
 
     formatStatus = {
-        "command": ", ".join(cleanDriveCMD),
-        "returnCode": ""
+        "cleanDrive": {
+            "command": cleanDriveOutput.args,
+            "returnCode": cleanDriveOutput.returncode
+        },
+        "createPart": {
+            "command": createPartOutput.args,
+            "returnCode": createPartOutput.returncode
+        },
+        "formatPart": {
+            "command": formatPartCMD,
+            "returnCode": formatPartOutput.returncode
+        }
     }
-    print(cleanDriveOutput)
-    print(createPartOutput)
-    print(formatPartOutput)
-    print("-" * 50)
-    # Figure out this tuple thingy, called something else
-    print(cleanDriveOutput["args"])
-    for output in cleanDriveOutput[0]:
-        print(output)
 
     return formatStatus
 
