@@ -29,14 +29,13 @@ cleanDriveCMD = [
     "dd", "if=/dev/zero", "of=#path", "bs=512", "count=1"
 ]
 
-# MAY NOT WORK - UNTESTED
 # Format drive to GPT one partition
 createPartCMD = [
     [
         "echo",  "start=2048, type=7"
     ],
     [
-        "sudo", "sfdisk", "#path"
+        "sfdisk", "#path"
     ]
 ]
 
@@ -50,7 +49,7 @@ formatPartCMD = [
 def getUsbDevices():
     rawDeviceData = run(lsblkCMD, stdout=PIPE)
     devices = json.loads(rawDeviceData.stdout)
-    usbDevices = []
+    usbDevices = {}
     # pprint(devices)
 
     # for device in devices['blockdevices']:
@@ -71,51 +70,74 @@ def getUsbDevices():
                     'fstype': part['fstype']
                 }
 
-        usbDevices.append({
-            device['name']: {
-                'rm': device['rm'],
-                'tran': device['tran'],
-                'parts': parts
-            }
-        })
+        usbDevices[device['name']] = {
+            'rm': device['rm'],
+            'tran': device['tran'],
+            'parts': parts
+        }
         pass
     return usbDevices
 
-
+# BUG: CMDs does not reset to correct cmd
+# It keeps the old variable value
 def formatUSBDevice(path: str):
-    # Replace "#path" with correct drive path for cleanDriveCMD
+
+    print(cleanDriveCMD)
+    print(createPartCMD)
+    print(formatPartCMD)
+
+    # Assign temp variables for each cmd
+    cleanDriveCMDtemp = cleanDriveCMD
+    createPartCMDtemp = createPartCMD
+    formatPartCMDtemp = formatPartCMD
+
+    # Replace "#path" with correct drive path for cleanDriveCMDtemp
     pathIndex = 0
-    # Iterate through "cleanDriveCMD" and find "#path"
-    for i in range(len(cleanDriveCMD)):
-        item = cleanDriveCMD[i]
+    # Iterate through "cleanDriveCMDtemp" and find "#path"
+    for i in range(len(cleanDriveCMDtemp)):
+        item = cleanDriveCMDtemp[i]
         if "#path" in item:
             pathIndex = i
+            cleanDriveCMDtemp[pathIndex] = cleanDriveCMDtemp[pathIndex].replace("#path", path)
 
-    cleanDriveCMD[pathIndex] = cleanDriveCMD[pathIndex].replace("#path", path)
+    
 
-    # Replace "#path" with correct drive path for createPartCMD
-    pathIndex = createPartCMD[1].index("#path")
-    createPartCMD[1][pathIndex] = createPartCMD[1][pathIndex].replace(
-        "#path", path)
+    # Replace "#path" with correct drive path for createPartCMDtemp
+    for i in range(len(createPartCMDtemp[1])):
+        item = createPartCMDtemp[1][i]
+        if "#path" in item:
+            pathIndex = i
+            createPartCMDtemp[1][pathIndex] = createPartCMDtemp[1][pathIndex].replace(
+                "#path", path)
+    #pathIndex = createPartCMDtemp[1].index("#path")
+    
 
-    # Replace "#path" with correct drive path for formatPartCMD
-    pathIndex = formatPartCMD.index("#path")
-    formatPartCMD[pathIndex] = formatPartCMD[pathIndex].replace(
-        "#path", path + "1")
+    # Replace "#path" with correct drive path for formatPartCMDtemp
+
+    for i in range(len(formatPartCMDtemp)):
+            item = formatPartCMDtemp[i]
+            if "#path" in item:
+                pathIndex = i
+                formatPartCMDtemp[pathIndex] = formatPartCMDtemp[pathIndex].replace("#path", path)
+
+    # pathIndex = formatPartCMDtemp.index("#path")
+    # formatPartCMDtemp[pathIndex] = formatPartCMDtemp[pathIndex].replace(
+    #     "#path", path + "1")
 
     # Clean the drive
-    cleanDriveOutput = run(cleanDriveCMD, stdout=PIPE)
+    cleanDriveOutput = run(cleanDriveCMDtemp, stdout=PIPE)
 
     # Format drive to GPT
-    createPartOutput = run(createPartCMD[0], stdout=PIPE)
+    # Pipe first commands output into second command
+    createPartOutput = run(createPartCMDtemp[0], stdout=PIPE)
     createPartOutput = run(
-        createPartCMD[1], input=createPartOutput.stdout, stdout=PIPE)
+        createPartCMDtemp[1], input=createPartOutput.stdout, stdout=PIPE)
 
     # Create one partition
-    formatPartOutput = run(formatPartCMD, stdout=PIPE)
+    formatPartOutput = run(formatPartCMDtemp, stdout=PIPE)
 
     # TESTING with popen.
-    # createPartOutput = Popen(createPartCMD, stderr=STDOUT, stdout=PIPE)
+    # createPartOutput = Popen(createPartCMDtemp, stderr=STDOUT, stdout=PIPE)
     # cmdReturn = createPartOutput.communicate()[0],
     #   createPartOutput.returncode
     # cmdReturn = createPartOutput.communicate()
@@ -132,7 +154,7 @@ def formatUSBDevice(path: str):
             "returnCode": createPartOutput.returncode
         },
         "formatPart": {
-            "command": formatPartCMD,
+            "command": formatPartCMDtemp,
             "returnCode": formatPartOutput.returncode
         }
     }
@@ -140,6 +162,14 @@ def formatUSBDevice(path: str):
     return formatStatus
 
 
-pprint(formatUSBDevice("/dev/sdb"))
+#pprint(formatUSBDevice("/dev/sdb"))
 
-pprint(getUsbDevices())
+# pprint(getUsbDevices())
+
+usbStorageDevices = getUsbDevices()
+
+for device in usbStorageDevices:
+    print("Formatting device: " + device)  
+    formatStatus = formatUSBDevice(device)
+    for cmd in formatStatus:
+        print("Cmd: " + cmd + " - Return Code: " + str(formatStatus[cmd]["returnCode"]))
