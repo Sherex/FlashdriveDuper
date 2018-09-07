@@ -78,19 +78,14 @@ def getUsbDevices():
         pass
     return usbDevices
 
-# BUG: CMDs does not reset to correct cmd
-# It keeps the old variable value
 def formatUSBDevice(path: str):
 
-    print(cleanDriveCMD)
-    print(createPartCMD)
-    print(formatPartCMD)
-
     # Assign temp variables for each cmd
-    cleanDriveCMDtemp = cleanDriveCMD
-    createPartCMDtemp = createPartCMD
-    formatPartCMDtemp = formatPartCMD
 
+    cleanDriveCMDtemp = list(cleanDriveCMD)
+    createPartCMDtemp = list(createPartCMD)
+    formatPartCMDtemp = list(formatPartCMD)
+    
     # Replace "#path" with correct drive path for cleanDriveCMDtemp
     pathIndex = 0
     # Iterate through "cleanDriveCMDtemp" and find "#path"
@@ -99,8 +94,6 @@ def formatUSBDevice(path: str):
         if "#path" in item:
             pathIndex = i
             cleanDriveCMDtemp[pathIndex] = cleanDriveCMDtemp[pathIndex].replace("#path", path)
-
-    
 
     # Replace "#path" with correct drive path for createPartCMDtemp
     for i in range(len(createPartCMDtemp[1])):
@@ -123,6 +116,7 @@ def formatUSBDevice(path: str):
     # pathIndex = formatPartCMDtemp.index("#path")
     # formatPartCMDtemp[pathIndex] = formatPartCMDtemp[pathIndex].replace(
     #     "#path", path + "1")
+
 
     # Clean the drive
     cleanDriveOutput = run(cleanDriveCMDtemp, stdout=PIPE)
